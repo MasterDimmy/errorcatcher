@@ -62,8 +62,10 @@ func (s *System) Wait() {
 func (s *System) sender() {
 	s.once.Do(func() {
 		s.tasks = make(chan string, 1000)
+
+		host, _ := os.Hostname()
 		s.exename, _ = os.Executable()
-		s.exename = path.Base(s.exename)
+		s.exename = host + " - " + path.Base(s.exename)
 
 		go func() {
 			for {
