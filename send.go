@@ -102,6 +102,7 @@ func (s *System) sender() {
 
 					var b []byte
 					p := fasthttp.AcquireArgs()
+					defer fasthttp.ReleaseArgs(p)
 					p.AddBytesV("data", buf)
 					c, data, err := fasthttp.Post(b, s.CollectorUrl, p)
 					if err != nil || c != 200 || len(data) == 0 || string(data) != "OK" {
