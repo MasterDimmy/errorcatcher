@@ -67,6 +67,10 @@ func (s *System) sender() {
 		s.exename, _ = os.Executable()
 		s.exename = host + " - " + path.Base(s.exename)
 
+		client := &fasthttp.Client{}
+		client.ReadTimeout = 10 * time.Second
+		client.WriteTimeout = 10 * time.Second
+
 		go func() {
 			for {
 				func() {
@@ -104,7 +108,8 @@ func (s *System) sender() {
 					p := fasthttp.AcquireArgs()
 					defer fasthttp.ReleaseArgs(p)
 					p.AddBytesV("data", buf)
-					c, data, err := fasthttp.Post(b, s.CollectorUrl, p)
+
+					c, data, err := client.Post(b, s.CollectorUrl, p)
 					if err != nil || c != 200 || len(data) == 0 || string(data) != "OK" {
 						if err != nil {
 							fmt.Println(err.Error())
