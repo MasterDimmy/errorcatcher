@@ -76,8 +76,8 @@ func (s *System) sender() {
 				func() {
 					msg := <-s.tasks
 					mx := len(msg)
-					if mx > 200 {
-						msg = msg[:200]
+					if mx > 1000 {
+						msg = msg[:1000]
 					}
 					msg += "\n"
 					atomic.StoreInt64(&s.working, 1)
