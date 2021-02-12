@@ -22,7 +22,7 @@ type TCatchedError struct {
 
 type System struct {
 	Name string   //system name
-	Nick []string //whom to inform in chat?
+	Nick []string //whom to inform in chat ?
 
 	CollectorUrl string //chat connector url
 
