@@ -21,8 +21,8 @@ type TCatchedError struct {
 }
 
 type System struct {
-	Name string //system name
-	Nick string //whom to inform in chat?
+	Name string   //system name
+	Nick []string //whom to inform in chat?
 
 	CollectorUrl string //chat connector url
 
@@ -97,25 +97,27 @@ func (s *System) sender() {
 						}
 					}
 
-					buf, _ := json.Marshal(&TCatchedError{
-						Source: s.Name + " (" + s.exename + ")",
-						Nick:   s.Nick,
-						Text:   msg,
-						When:   time.Now().Unix(),
-					})
+					for _, nick := range s.Nick {
+						buf, _ := json.Marshal(&TCatchedError{
+							Source: s.Name + " (" + s.exename + ")",
+							Nick:   nick,
+							Text:   msg,
+							When:   time.Now().Unix(),
+						})
 
-					var b []byte
-					p := fasthttp.AcquireArgs()
-					defer fasthttp.ReleaseArgs(p)
-					p.AddBytesV("data", buf)
+						var b []byte
+						p := fasthttp.AcquireArgs()
+						defer fasthttp.ReleaseArgs(p)
+						p.AddBytesV("data", buf)
 
-					c, data, err := client.Post(b, s.CollectorUrl, p)
-					if err != nil || c != 200 || len(data) == 0 || string(data) != "OK" {
-						if err != nil {
-							fmt.Println(err.Error())
-							return
+						c, data, err := client.Post(b, s.CollectorUrl, p)
+						if err != nil || c != 200 || len(data) == 0 || string(data) != "OK" {
+							if err != nil {
+								fmt.Println(err.Error())
+								return
+							}
+							fmt.Printf("%d : %s\n", c, string(data))
 						}
-						fmt.Printf("%d : %s\n", c, string(data))
 					}
 				}()
 			}
