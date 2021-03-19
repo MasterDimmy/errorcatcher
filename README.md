@@ -1,6 +1,6 @@
 "# errorcatcher" 
 
-Writes software errors to chat
+Write software errors to chat
 
 Usage:
 
