@@ -192,7 +192,7 @@ func (s *System) sender() {
 						}
 					}
 					if runtime.GOOS == "windows" {
-						fmt.Printf("code:%d  body: %s\n", c, string(data))
+						fmt.Printf("sent catched error\ncode:%d  body: %s\n", c, string(data))
 					}
 				}()
 			}
