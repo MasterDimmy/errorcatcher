@@ -18,14 +18,15 @@ import (
 */
 
 func Test_sender(t *testing.T) {
-	c := System{Name: "test errcatcher", CollectorUrl: "http://localhost/catch_debug_error", Nick: "ed"}
+	c := System{Name: "test errcatcher", CollectorUrl: "http://localhost/catch_debug_error", Nick: []string{"ed"}}
 
 	c.Send("first")
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 200)
 
 	for i := 0; i < 5; i++ {
 		c.Send("merge this " + fmt.Sprintf("%d", i))
 	}
-	time.Sleep(time.Second)
+
+	c.Wait()
 }
