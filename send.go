@@ -27,7 +27,7 @@ type TCatchedError struct {
 	Source string
 	Text   string
 	When   int64
-	Nicks  []string //имена получателей в чате
+	Nicks  []string //????? ??????????? ? ????
 }
 
 type System struct {
@@ -115,14 +115,14 @@ func (s *System) sender() {
 					defer atomic.StoreInt64(&s.working, 0)
 
 					ok := true
-					for ok { //вынимаем остальные сообщения
+					for ok { //???????? ????????? ?????????
 						select {
 						case t := <-s.tasks:
 							mx := len(t.text)
 							if mx > 1000 {
 								t.text = t.text[:1000]
 							}
-							msg.text += t.text + "\n" //между сообщениями
+							msg.text += t.text + "\n" //????? ???????????
 							msg.fname = append(msg.fname, t.fname...)
 						default:
 							ok = false
