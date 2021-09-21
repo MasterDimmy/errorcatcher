@@ -23,11 +23,12 @@ type task_data struct {
 }
 
 type TCatchedError struct {
-	Id     int64
-	Source string
-	Text   string
-	When   int64
-	Nicks  []string //????? ??????????? ? ????
+	Id    int64
+	Name  string
+	Exe   string
+	Text  string
+	When  int64
+	Nicks []string //????? ??????????? ? ????
 }
 
 type System struct {
@@ -130,10 +131,11 @@ func (s *System) sender() {
 					}
 
 					buf, _ := json.Marshal(&TCatchedError{
-						Source: s.Name + " (" + s.exename + ")",
-						Text:   msg.text,
-						When:   time.Now().Unix(),
-						Nicks:  s.Nick,
+						Name:  s.Name,
+						Exe:   s.exename,
+						Text:  msg.text,
+						When:  time.Now().Unix(),
+						Nicks: s.Nick,
 					})
 
 					bb := bytes.NewBuffer(buf)
