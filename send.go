@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,7 +29,7 @@ type TCatchedError struct {
 	Exe   string
 	Text  string
 	When  int64
-	Nicks []string //????? ??????????? ? ????
+	Nicks string //Nick via ;
 }
 
 type System struct {
@@ -135,7 +136,7 @@ func (s *System) sender() {
 						Exe:   s.exename,
 						Text:  msg.text,
 						When:  time.Now().Unix(),
-						Nicks: s.Nick,
+						Nicks: strings.Join(s.Nick, ";"),
 					})
 
 					bb := bytes.NewBuffer(buf)
