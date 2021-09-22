@@ -2,6 +2,7 @@ package errorcatcher
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -86,12 +88,13 @@ func (s *System) SendWithFile(text string, filenames []string) {
 		}
 	}
 
+	atomic.AddInt64(&s.working, 1)
 	s.tasks <- &task_data{text: text, fname: filenames}
 }
 
 //ensure all tasks sent
 func (s *System) Wait() {
-	for atomic.LoadInt64(&s.working) == 1 {
+	for atomic.LoadInt64(&s.working) > 0 {
 		time.Sleep(time.Second)
 	}
 }
@@ -113,8 +116,8 @@ func (s *System) sender() {
 						msg.text = msg.text[:1000]
 					}
 					msg.text += "\n"
-					atomic.StoreInt64(&s.working, 1)
-					defer atomic.StoreInt64(&s.working, 0)
+					atomic.AddInt64(&s.working, 1)
+					defer atomic.AddInt64(&s.working, -2)
 
 					ok := true
 					for ok { //???????? ????????? ?????????
@@ -145,13 +148,31 @@ func (s *System) sender() {
 
 					for i, v := range msg.fname {
 						if len(v) > 1 {
-							f, err := os.Open(v)
+							/*
+								f, err := os.Open(v)
+								if err != nil {
+									fmt.Printf("errorcatcher: %s => %s ", v, err.Error())
+									return
+								}
+								defer f.Close()
+							*/
+
+							buff := &bytes.Buffer{}
+							wr := gzip.NewWriter(buff)
+							wr.Header.Name = filepath.Base(v)
+							data, err := ioutil.ReadFile(v)
 							if err != nil {
-								fmt.Printf("errorcatcher: %s => %s ", v, err.Error())
+								fmt.Printf("errorcatcher: read file %s => %s ", v, err.Error())
 								return
 							}
-							defer f.Close()
-							mdata["file"+fmt.Sprintf("%d", i)] = f
+							_, err = wr.Write(data)
+							if err != nil {
+								fmt.Printf("errorcatcher: gzip %s => %s ", v, err.Error())
+								return
+							}
+							wr.Close()
+
+							mdata["file"+fmt.Sprintf("%d", i)] = buff
 						}
 					}
 
