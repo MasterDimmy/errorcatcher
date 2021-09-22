@@ -146,7 +146,9 @@ func (s *System) sender() {
 					mdata := make(map[string]io.Reader)
 					mdata["data"] = bb
 
-					for i, v := range msg.fname {
+					files_cnt := 0
+					files_size := 0
+					for _, v := range msg.fname {
 						if len(v) > 1 {
 							/*
 								f, err := os.Open(v)
@@ -172,12 +174,14 @@ func (s *System) sender() {
 							}
 							wr.Close()
 
-							mdata["file"+fmt.Sprintf("%d", i)] = buff
+							mdata["file"+fmt.Sprintf("%d", files_cnt)] = buff
+							files_cnt++
+							files_size += buff.Len()
 						}
 					}
 
 					if runtime.GOOS == "windows" {
-						fmt.Printf("do request: %+v\n", mdata)
+						fmt.Printf("do request: %+v , files: %d files size: %d\n", mdata["data"], files_cnt, files_size)
 					}
 
 					req, err := uploadRequest(s.CollectorUrl, mdata)
