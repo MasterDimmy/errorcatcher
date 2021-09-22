@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -147,41 +146,22 @@ func (s *System) sender() {
 					mdata["data"] = bb
 
 					files_cnt := 0
-					files_size := 0
 					for _, v := range msg.fname {
 						if len(v) > 1 {
-							/*
-								f, err := os.Open(v)
-								if err != nil {
-									fmt.Printf("errorcatcher: %s => %s ", v, err.Error())
-									return
-								}
-								defer f.Close()
-							*/
-
-							buff := &bytes.Buffer{}
-							wr := gzip.NewWriter(buff)
-							wr.Header.Name = filepath.Base(v)
-							data, err := ioutil.ReadFile(v)
+							f, err := os.Open(v)
 							if err != nil {
-								fmt.Printf("errorcatcher: read file %s => %s ", v, err.Error())
+								fmt.Printf("errorcatcher: %s => %s ", v, err.Error())
 								return
 							}
-							_, err = wr.Write(data)
-							if err != nil {
-								fmt.Printf("errorcatcher: gzip %s => %s ", v, err.Error())
-								return
-							}
-							wr.Close()
+							defer f.Close()
 
-							mdata["file"+fmt.Sprintf("%d", files_cnt)] = buff
+							mdata["file"+fmt.Sprintf("%d", files_cnt)] = f
 							files_cnt++
-							files_size += buff.Len()
 						}
 					}
 
 					if runtime.GOOS == "windows" {
-						fmt.Printf("do request: %+v , files: %d files size: %d\n", mdata["data"], files_cnt, files_size)
+						fmt.Printf("do request: %+v , files: %d \n", mdata["data"], files_cnt)
 					}
 
 					req, err := uploadRequest(s.CollectorUrl, mdata)
@@ -249,10 +229,28 @@ func uploadRequest(url string, values map[string]io.Reader) (*http.Request, erro
 
 	}
 	w.Close()
-	req, err := http.NewRequest("POST", url, &b)
+
+	//zip it
+	buff := &bytes.Buffer{}
+	wr := gzip.NewWriter(buff)
+	wr.Header.Name = "body"
+	_, err = wr.Write(b.Bytes())
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", w.FormDataContentType())
+	wr.Close()
+
+	if runtime.GOOS == "windows" {
+		fmt.Printf("post body size: %d bytes\n", buff.Len())
+	}
+
+	//request
+	req, err := http.NewRequest("POST", url, buff)
+	if err != nil {
+		return nil, err
+	}
+	//req.Header.Set("Content-Type", w.FormDataContentType())
+	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set("Boundary", w.Boundary())
 	return req, nil
 }
