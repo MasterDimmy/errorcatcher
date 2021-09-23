@@ -62,6 +62,7 @@ func (s *System) Send(text string) {
 		panic("errorcatcher: CollectorUrl is nil")
 	}
 
+	atomic.AddInt64(&s.working, 1)
 	s.tasks <- &task_data{text: text}
 }
 
@@ -115,7 +116,7 @@ func (s *System) sender() {
 						msg.text = msg.text[:1000]
 					}
 					msg.text += "\n"
-					atomic.AddInt64(&s.working, 1)
+					atomic.AddInt64(&s.working, 1) //this and in task
 					defer atomic.AddInt64(&s.working, -2)
 
 					ok := true
