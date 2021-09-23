@@ -111,18 +111,22 @@ func (s *System) sender() {
 			for {
 				func() {
 					msg := <-s.tasks
+					defer atomic.AddInt64(&s.working, -1)
+
 					mx := len(msg.text)
 					if mx > 1000 {
 						msg.text = msg.text[:1000]
 					}
 					msg.text += "\n"
 					atomic.AddInt64(&s.working, 1) //this and in task
-					defer atomic.AddInt64(&s.working, -2)
+					defer atomic.AddInt64(&s.working, -1)
 
 					ok := true
 					for ok { //???????? ????????? ?????????
 						select {
 						case t := <-s.tasks:
+							defer atomic.AddInt64(&s.working, -1)
+
 							mx := len(t.text)
 							if mx > 1000 {
 								t.text = t.text[:1000]
