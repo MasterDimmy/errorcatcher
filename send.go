@@ -11,13 +11,13 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"reflect"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	//"github.com/valyala/fasthttp"
+
+	"github.com/MasterDimmy/golang-lruexpire"
 )
 
 type task_data struct {
@@ -109,16 +109,23 @@ func (s *System) sender() {
 		s.exename = host + " - " + path.Base(s.exename)
 
 		go func() {
+			text_and_files, _ := lru.NewARCWithExpire(100, time.Minute) //skip same messages being sent
+
 			for {
 				func() {
+
 					msg := <-s.tasks
 					defer atomic.AddInt64(&s.working, -1)
+
+					text_and_files.Add(msg.text, 1)
+					for _, v := range msg.fname {
+						text_and_files.Add("f"+v, 1)
+					}
 
 					mx := len(msg.text)
 					if mx > 2000 {
 						msg.text = msg.text[:2000]
 					}
-					msg.text += "\n"
 					msg.fname = append(msg.fname, msg.fname...)
 					atomic.AddInt64(&s.working, 1) //this and in task
 					defer atomic.AddInt64(&s.working, -1)
@@ -129,11 +136,27 @@ func (s *System) sender() {
 						case t := <-s.tasks:
 							defer atomic.AddInt64(&s.working, -1)
 
-							mx := len(t.text)
-							if mx > 2000 {
-								t.text = t.text[:2000]
+							ok := text_and_files.Contains(t.text)
+							ok2 := true //все равны
+							for _, v := range t.fname {
+								ok3 := text_and_files.Contains("f" + v)
+								if !ok3 { //этого нет
+									ok2 = false
+									break
+								}
 							}
-							if msg.text != t.text && !reflect.DeepEqual(msg.fname, t.fname) {
+
+							if !ok || !ok2 {
+								text_and_files.Add(t.text, 1)
+								for _, v := range t.fname {
+									text_and_files.Add("f"+v, 1)
+								}
+
+								mx := len(t.text)
+								if mx > 2000 {
+									t.text = t.text[:2000]
+								}
+
 								msg.text += "\n\n" + t.text
 								msg.fname = append(msg.fname, t.fname...)
 							}
