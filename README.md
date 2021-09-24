@@ -1,13 +1,24 @@
 "# errorcatcher" 
 
-Write software errors to chat
+Write software errors to Rocket Chat via middleware (not provided)
 
 Usage:
 
 ```
-	include "modules/errorcatcher"
+	package errorcatcher
 
-	var error_catcher = errorcatcher.System{Name: "some name", CollectorUrl:"url_to_catch_debug_error", Nick: "whom"}
+import (
+	"testing"
+)
 
-	error_catcher.Send("some text of error")
+	func Test_SendFile(t *testing.T) {
+		c := System{Name: "test errcatcher", CollectorUrl: "http://localhost/catch_debug_error", 		Nick: []string{"whom to send"}}
+
+	c.Send("first")
+	c.Wait()
+
+	c.SendWithFile("test file", []string{"./send.go", "./go.mod"})
+	c.Wait()
+}
+
 ```
