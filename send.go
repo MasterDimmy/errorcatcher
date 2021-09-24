@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -114,10 +115,11 @@ func (s *System) sender() {
 					defer atomic.AddInt64(&s.working, -1)
 
 					mx := len(msg.text)
-					if mx > 1000 {
-						msg.text = msg.text[:1000]
+					if mx > 2000 {
+						msg.text = msg.text[:2000]
 					}
 					msg.text += "\n"
+					msg.fname = append(msg.fname, msg.fname...)
 					atomic.AddInt64(&s.working, 1) //this and in task
 					defer atomic.AddInt64(&s.working, -1)
 
@@ -128,11 +130,13 @@ func (s *System) sender() {
 							defer atomic.AddInt64(&s.working, -1)
 
 							mx := len(t.text)
-							if mx > 1000 {
-								t.text = t.text[:1000]
+							if mx > 2000 {
+								t.text = t.text[:2000]
 							}
-							msg.text += t.text + "\n" //????? ???????????
-							msg.fname = append(msg.fname, t.fname...)
+							if msg.text != t.text && !reflect.DeepEqual(msg.fname, t.fname) {
+								msg.text += "\n\n" + t.text
+								msg.fname = append(msg.fname, t.fname...)
+							}
 						default:
 							ok = false
 						}
