@@ -161,6 +161,7 @@ func (s *System) sender() {
 							defer f.Close()
 
 							mdata["file"+fmt.Sprintf("%d", files_cnt)] = f
+							mdata["fname"+fmt.Sprintf("%d", files_cnt)] = bytes.NewBufferString(v)
 							files_cnt++
 						}
 					}
