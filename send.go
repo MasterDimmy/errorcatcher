@@ -40,6 +40,8 @@ type System struct {
 
 	CollectorUrl string //chat connector url
 
+	TurnOff bool
+
 	exename string //name of the executable
 
 	once    sync.Once
@@ -49,6 +51,10 @@ type System struct {
 
 //send error message
 func (s *System) Send(text string) {
+	if s.TurnOff {
+		return
+	}
+
 	s.sender()
 
 	if len(s.Name) == 0 {
@@ -69,6 +75,10 @@ func (s *System) Send(text string) {
 
 //send error message
 func (s *System) SendWithFile(text string, filenames []string) {
+	if s.TurnOff {
+		return
+	}
+
 	s.sender()
 
 	if len(s.Name) == 0 {
