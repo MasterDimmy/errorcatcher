@@ -168,7 +168,7 @@ func (s *System) sender() {
 									t.text = t.text[:2000]
 								}
 
-								msg.text += "\n\n" + t.text
+								msg.text += "\n" + t.text
 								msg.fname = append(msg.fname, t.fname...)
 							}
 						default:
