@@ -137,7 +137,7 @@ func (s *System) sender() {
 					if mx > 2000 {
 						msg.text = msg.text[:2000]
 					}
-					msg.fname = append(msg.fname, msg.fname...)
+
 					atomic.AddInt64(&s.working, 1) //this and in task
 					defer atomic.AddInt64(&s.working, -1)
 
