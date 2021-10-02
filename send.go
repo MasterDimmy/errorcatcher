@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -175,10 +176,14 @@ func (s *System) sender() {
 						}
 					}
 
+					var scbufb []byte
+					scbuf := bytes.NewBuffer(scbufb)
+					json.HTMLEscape(scbuf, []byte(msg.text))
+
 					buf, _ := json.Marshal(&TCatchedError{
-						Name:  s.Name,
-						Exe:   s.exename,
-						Text:  msg.text,
+						Name:  html.EscapeString(s.Name),
+						Exe:   html.EscapeString(s.exename),
+						Text:  scbuf.String(),
 						When:  time.Now().Unix(),
 						Nicks: strings.Join(s.Nick, ";"),
 					})
