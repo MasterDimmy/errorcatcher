@@ -142,6 +142,7 @@ func (s *System) sender() {
 					defer atomic.AddInt64(&s.working, -1)
 
 					ok := true
+					this_num := 2
 					for ok { //???????? ????????? ?????????
 						select {
 						case t := <-s.tasks:
@@ -168,8 +169,9 @@ func (s *System) sender() {
 									t.text = t.text[:2000]
 								}
 
-								msg.text += "\n" + t.text
+								msg.text += fmt.Sprintf("\n------------- MSG %d , %s -------------\n", this_num, formatTime(time.Now().Unix())) + t.text
 								msg.fname = append(msg.fname, t.fname...)
+								this_num++
 							}
 						default:
 							ok = false
