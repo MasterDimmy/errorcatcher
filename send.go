@@ -24,7 +24,7 @@ import (
 	"github.com/MasterDimmy/golang-lruexpire"
 )
 
-type task_data struct {
+type taskData struct {
 	text  string
 	fname []string
 }
@@ -49,7 +49,7 @@ type System struct {
 	exename string //name of the executable
 
 	once    sync.Once
-	tasks   chan *task_data
+	tasks   chan *taskData
 	working int64
 
 	resendM                       sync.Mutex
@@ -59,7 +59,7 @@ type System struct {
 	ResendStorage                 string  // "./errcatcherresender/"
 }
 
-//send error message
+// send error message
 func (s *System) Send(text string) {
 	if s.TurnOff {
 		return
@@ -80,10 +80,10 @@ func (s *System) Send(text string) {
 	}
 
 	atomic.AddInt64(&s.working, 1)
-	s.tasks <- &task_data{text: text}
+	s.tasks <- &taskData{text: text}
 }
 
-//send error message
+// send error message with file
 func (s *System) SendWithFile(text string, filenames []string) {
 	if s.TurnOff {
 		return
@@ -110,10 +110,10 @@ func (s *System) SendWithFile(text string, filenames []string) {
 	}
 
 	atomic.AddInt64(&s.working, 1)
-	s.tasks <- &task_data{text: text, fname: filenames}
+	s.tasks <- &taskData{text: text, fname: filenames}
 }
 
-//ensure all tasks sent
+// ensure all tasks sent
 func (s *System) Wait() {
 	for atomic.LoadInt64(&s.working) > 0 {
 		time.Sleep(200 * time.Millisecond)
@@ -123,158 +123,153 @@ func (s *System) Wait() {
 func (s *System) sender() {
 	s.once.Do(func() {
 		if s.ResendNotSended {
-			os.MkdirAll(s.ResendStorage, 0644)
+			os.MkdirAll(s.ResendStorage, 0755) // Ensure proper permissions
 
 			s.setDefaults()
 			go s.resend()
 		}
 
-		s.tasks = make(chan *task_data, 1000)
+		s.tasks = make(chan *taskData, 1000)
 
 		host, _ := os.Hostname()
 		s.exename, _ = os.Executable()
 		s.exename = host + " - " + path.Base(s.exename)
 
-		text_and_files, _ := lru.NewARCWithExpire(100, time.Minute) //skip same messages being sent
+		textAndFiles, _ := lru.NewARCWithExpire(100, time.Minute) // Skip same messages being sent
 
-		for fir := 0; fir < 5; fir++ {
-			go func() {
-				for {
-					var req *http.Request
-					sentok := false
-					func() {
-						msg := <-s.tasks
-						defer atomic.AddInt64(&s.working, -1)
-
-						text_and_files.Add(msg.text, 1)
-						for _, v := range msg.fname {
-							text_and_files.Add("f"+v, 1)
-						}
-
-						mx := len(msg.text)
-						if mx > 2000 {
-							msg.text = msg.text[:2000]
-						}
-
-						atomic.AddInt64(&s.working, 1) //this and in task
-						defer atomic.AddInt64(&s.working, -1)
-
-						ok := true
-						this_num := 2
-						for ok {
-							select {
-							case t := <-s.tasks:
-								defer atomic.AddInt64(&s.working, -1)
-
-								ok := text_and_files.Contains(t.text)
-								ok2 := true
-								for _, v := range t.fname {
-									ok3 := text_and_files.Contains("f" + v)
-									if !ok3 {
-										ok2 = false
-										break
-									}
-								}
-
-								if !ok || !ok2 {
-									text_and_files.Add(t.text, 1)
-									for _, v := range t.fname {
-										text_and_files.Add("f"+v, 1)
-									}
-
-									mx := len(t.text)
-									if mx > 2000 {
-										t.text = t.text[:2000]
-									}
-
-									msg.text += fmt.Sprintf("\n------------- MSG %d , %s -------------\n", this_num, formatTime(time.Now().Unix())) + t.text
-									msg.fname = append(msg.fname, t.fname...)
-									this_num++
-								}
-							default:
-								ok = false
-							}
-						}
-
-						buf, _ := json.Marshal(&TCatchedError{
-							Name:  s.Name,
-							Exe:   s.exename,
-							Text:  msg.text,
-							When:  time.Now().Unix(),
-							Nicks: strings.Join(s.Nick, ";"),
-						})
-
-						bb := bytes.NewBuffer(buf)
-						mdata := make(map[string]io.Reader)
-						mdata["data"] = bb
-
-						files_cnt := 0
-						for _, v := range msg.fname {
-							if len(v) > 1 {
-								f, err := os.Open(v)
-								if err != nil {
-									fmt.Printf("errorcatcher: %s => %s ", v, err.Error())
-									return
-								}
-								defer f.Close()
-
-								mdata["file"+fmt.Sprintf("%d", files_cnt)] = f
-								mdata["fname"+fmt.Sprintf("%d", files_cnt)] = bytes.NewBufferString(v)
-								files_cnt++
-							}
-						}
-
-						if runtime.GOOS == "windows" {
-							fmt.Printf("do request: %+v , files: %d \n", mdata["data"], files_cnt)
-						}
-
-						var err error
-						req, err = uploadRequest(s.CollectorUrl, mdata)
-						if err != nil {
-							fmt.Println("errorcatcher: " + err.Error())
-							return
-						}
-
-						client := &http.Client{
-							Timeout: time.Minute,
-						}
-						resp, err := client.Do(req)
-						if err != nil {
-							fmt.Println("errorcatcher: " + err.Error())
-							return
-						}
-						if resp == nil {
-							fmt.Println("errorcatcher: responce is nil")
-							return
-						}
-						data, err := ioutil.ReadAll(resp.Body)
-						if err != nil {
-							fmt.Println("errorcatcher: " + err.Error())
-							return
-						}
-						defer resp.Body.Close()
-						c := resp.StatusCode
-
-						if err != nil || c != 200 || len(data) == 0 || string(data) != "OK" {
-							if err != nil {
-								fmt.Println("errorcatcher: " + err.Error())
-								return
-							}
-						}
-						if runtime.GOOS == "windows" {
-							fmt.Printf("sent catched error\ncode:%d  body: %s\n", c, string(data))
-						}
-						sentok = true
-					}()
-					if !sentok {
-						if s.ResendNotSended && req != nil {
-							go s.addForResend(req)
-						}
-					}
+		go func() {
+			for {
+				select {
+				case msg := <-s.tasks:
+					s.processMessage(msg, textAndFiles)
+				case <-time.After(100 * time.Millisecond):
+					// Sleep to reduce CPU usage
 				}
-			}()
-		} //for
+			}
+		}()
 	})
+}
+
+func (s *System) processMessage(msg *taskData, textAndFiles *lru.ARCCache) {
+	defer atomic.AddInt64(&s.working, -1)
+
+	textAndFiles.Add(msg.text, 1)
+	for _, v := range msg.fname {
+		textAndFiles.Add("f"+v, 1)
+	}
+
+	mx := len(msg.text)
+	if mx > 2000 {
+		msg.text = msg.text[:2000]
+	}
+
+	atomic.AddInt64(&s.working, 1) // this and in task
+	defer atomic.AddInt64(&s.working, -1)
+
+	ok := true
+	thisNum := 2
+	for ok {
+		select {
+		case t := <-s.tasks:
+			defer atomic.AddInt64(&s.working, -1)
+
+			ok := textAndFiles.Contains(t.text)
+			ok2 := true
+			for _, v := range t.fname {
+				ok3 := textAndFiles.Contains("f" + v)
+				if !ok3 {
+					ok2 = false
+					break
+				}
+			}
+
+			if !ok || !ok2 {
+				textAndFiles.Add(t.text, 1)
+				for _, v := range t.fname {
+					textAndFiles.Add("f"+v, 1)
+				}
+
+				mx := len(t.text)
+				if mx > 2000 {
+					t.text = t.text[:2000]
+				}
+
+				msg.text += fmt.Sprintf("\n------------- MSG %d , %s -------------\n", thisNum, formatTime(time.Now().Unix())) + t.text
+				msg.fname = append(msg.fname, t.fname...)
+				thisNum++
+			}
+		default:
+			ok = false
+		}
+	}
+
+	buf, _ := json.Marshal(&TCatchedError{
+		Name:  s.Name,
+		Exe:   s.exename,
+		Text:  msg.text,
+		When:  time.Now().Unix(),
+		Nicks: strings.Join(s.Nick, ";"),
+	})
+
+	bb := bytes.NewBuffer(buf)
+	mdata := make(map[string]io.Reader)
+	mdata["data"] = bb
+
+	filesCnt := 0
+	for _, v := range msg.fname {
+		if len(v) > 1 {
+			f, err := os.Open(v)
+			if err != nil {
+				fmt.Printf("errorcatcher: %s => %s ", v, err.Error())
+				return
+			}
+			defer f.Close()
+
+			mdata["file"+fmt.Sprintf("%d", filesCnt)] = f
+			mdata["fname"+fmt.Sprintf("%d", filesCnt)] = bytes.NewBufferString(v)
+			filesCnt++
+		}
+	}
+
+	if runtime.GOOS == "windows" {
+		fmt.Printf("do request: %+v , files: %d \n", mdata["data"], filesCnt)
+	}
+
+	req, err := uploadRequest(s.CollectorUrl, mdata)
+	if err != nil {
+		fmt.Println("errorcatcher: " + err.Error())
+		return
+	}
+
+	client := &http.Client{
+		Timeout: time.Minute,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("errorcatcher: " + err.Error())
+		return
+	}
+	if resp == nil {
+		fmt.Println("errorcatcher: response is nil")
+		return
+	}
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("errorcatcher: " + err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	c := resp.StatusCode
+
+	if err != nil || c != 200 || len(data) == 0 || string(data) != "OK" {
+		if err != nil {
+			fmt.Println("errorcatcher: " + err.Error())
+			return
+		}
+	}
+	if runtime.GOOS == "windows" {
+		fmt.Printf("sent catched error\ncode:%d  body: %s\n", c, string(data))
+	}
 }
 
 func (s *System) addForResend(req *http.Request) {
@@ -314,7 +309,7 @@ type fileWithTime struct {
 	size int64
 }
 
-//resend cycle for not resent files
+// resend cycle for not resent files
 func (s *System) resend() {
 	for {
 		func() {
@@ -363,7 +358,6 @@ func (s *System) resend() {
 			//send files starting from last
 			for _, fwt := range filesWithTime {
 				if fwt.size > 0 {
-					//fmt.Printf("SENDING: Filename: %s, Creation Time: %v Size: %d\n", fwt.name, fwt.mod, fwt.size)
 					if !s.sendStoredRequest(s.ResendStorage + fwt.name) {
 						fmt.Printf("cant send: %s\n", fwt.name)
 					} else {
@@ -427,7 +421,6 @@ func (s *System) sendStoredRequest(name string) (ret bool) {
 		fmt.Printf("cant create request: %s", err.Error())
 		return
 	}
-	//req.Header.Set("Content-Type", w.FormDataContentType())
 	newreq.Header.Set("Content-Encoding", "gzip")
 	newreq.Header.Set("Boundary", req.Header.Get("Boundary"))
 
