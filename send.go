@@ -221,7 +221,7 @@ func (s *System) processMessage(msg *taskData, textAndFiles *lru.ARCCache) {
 			f, err := os.Open(v)
 			if err != nil {
 				fmt.Printf("errorcatcher: %s => %s ", v, err.Error())
-				return
+				continue
 			}
 			defer f.Close()
 
