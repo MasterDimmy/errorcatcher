@@ -3,6 +3,8 @@ package errorcatcher
 import (
 	"bytes"
 	"compress/gzip"
+
+	//	"compress/gzip"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -58,7 +60,7 @@ func uploadRequest(url string, values map[string]io.Reader) (*http.Request, erro
 	}
 
 	if runtime.GOOS == "windows" {
-		fmt.Printf("post body size: %d bytes\n", buff.Len())
+		fmt.Printf("post body size: %d bytes\n", b.Len())
 	}
 
 	// Create request
@@ -67,8 +69,12 @@ func uploadRequest(url string, values map[string]io.Reader) (*http.Request, erro
 		return nil, err
 	}
 
-	req.Header.Set("Content-Encoding", "gzip")
+	//req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	if runtime.GOOS == "windows" {
+		fmt.Print("sent without gzip")
+	}
 
 	return req, nil
 }
