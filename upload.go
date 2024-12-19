@@ -2,9 +2,6 @@ package errorcatcher
 
 import (
 	"bytes"
-	"compress/gzip"
-
-	//	"compress/gzip"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -46,30 +43,16 @@ func uploadRequest(url string, values map[string]io.Reader) (*http.Request, erro
 		return nil, err
 	}
 
-	// Zip it
-	buff := &bytes.Buffer{}
-	wr := gzip.NewWriter(buff)
-	wr.Name = "body"
-
-	if _, err := wr.Write(b.Bytes()); err != nil {
-		return nil, err
-	}
-
-	if err := wr.Close(); err != nil {
-		return nil, err
-	}
-
 	if runtime.GOOS == "windows" {
 		fmt.Printf("post body size: %d bytes\n", b.Len())
 	}
 
 	// Create request
-	req, err := http.NewRequest("POST", url, buff)
+	req, err := http.NewRequest("POST", url, &b)
 	if err != nil {
 		return nil, err
 	}
 
-	//req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
 	if runtime.GOOS == "windows" {
