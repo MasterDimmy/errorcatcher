@@ -1,5 +1,5 @@
 module github.com/MasterDimmy/errorcatcher
 
-go 1.17
+go 1.26
 
-require github.com/MasterDimmy/golang-lruexpire v0.2.1
+require github.com/goupdate/golang-lruexpire v0.2.6

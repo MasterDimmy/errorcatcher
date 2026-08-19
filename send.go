@@ -21,7 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/MasterDimmy/golang-lruexpire"
+	"github.com/goupdate/golang-lruexpire"
 )
 
 type taskData struct {

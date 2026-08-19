@@ -1,2 +1,2 @@
-github.com/MasterDimmy/golang-lruexpire v0.2.1 h1:W6y4mdhV8gMMzoWHU+DLtKvWXQQflVefXo8/q/bXDiw=
-github.com/MasterDimmy/golang-lruexpire v0.2.1/go.mod h1:4ajU+qvydW4NgOfTm3ueokafudpJ35HrTrm5hooF2no=
+github.com/goupdate/golang-lruexpire v0.2.6 h1:nSVDwzUjz3FCc0iVEK0Cwa0EB8yZo+tz4dxAJ7MI0Wg=
+github.com/goupdate/golang-lruexpire v0.2.6/go.mod h1:hHpJ9Bsz9PpsK02eOhr1IUjhZ8w1GOhfdMZ6v3vA3Tg=
